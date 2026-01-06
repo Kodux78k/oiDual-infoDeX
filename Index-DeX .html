@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>InfoDose · Neural Deck (System V.13)</title>
+  <meta name="theme-color" content="#050811" />
+  <meta name="description" content="Campo operacional consciente.">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    :root {
+      --bg-deep: #050811;
+      --surface: #0f1219;
+      --primary: #00f5ff;
+      --primary-glow: rgba(0, 245, 255, 0.18);
+      --secondary: #bd00ff;
+      --text: #e4ecff;
+      --muted: #5a6578;
+      --glass: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.08);
+      --danger: #ff4b6b;
+      --fusion: #ffd166;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%}
+    body{
+      margin:0;padding:0;background:var(--bg-deep);color:var(--text);
+      font-family:'Plus Jakarta Sans',sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden;
+      transition: background 0.5s ease;
+    }
+    
+    /* MODES STYLES */
+    body[data-mode="focus"] .header,
+    body[data-mode="focus"] .fusion-bar,
+    body[data-mode="focus"] .fab-inject,
+    body[data-mode="focus"] .group-title { opacity:0.05; pointer-events:none; transition: opacity 0.5s; }
+    body[data-mode="focus"] .deck-container { filter: grayscale(0.8) contrast(1.1); }
+    
+    body[data-mode="ritual"] .nebula { filter: blur(3px) saturate(1.5); animation: pulseNebula 8s infinite alternate; }
+    body[data-mode="ritual"] .neural-card { box-shadow: 0 0 15px rgba(189,0,255,0.05); }
+
+    @keyframes pulseNebula { from{opacity:0.6} to{opacity:1} }
+
+    .nebula{position:fixed;inset:0;background:
+      radial-gradient(circle at 20% 30%, rgba(0,245,255,0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(189,0,255,0.04) 0%, transparent 50%);
+      z-index:-1;pointer-events:none;transition:all 1s ease}
+
+    /* HEADER */
+    .header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(to bottom,var(--bg-deep),rgba(5,8,17,0)); z-index:10;}
+    .logo{font-weight:800;font-size:1.0rem;letter-spacing:-0.5px; display:flex; flex-direction:column; line-height:1;}
+    .logo span{color:var(--primary);text-shadow:0 0 10px var(--primary-glow); font-size:0.7em; opacity:0.8; margin-top:2px;}
+    
+    .status-bar{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--muted);display:flex;gap:12px;align-items:center}
+    .status-select { background:var(--glass); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:6px; font-family:inherit; font-size:0.7rem; cursor:pointer; outline:none; }
+    
+    /* DECK */
+    .deck-container{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 20px 140px 20px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+    
+    .group-section{margin-bottom:32px;animation:fadeInUp .4s ease-out}
+    .group-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+    .group-title{font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)}
+    
+    .app-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:20px 16px}
+
+    /* CARD */
+    .neural-card{
+      --card-accent: var(--primary);
+      --card-bg: var(--glass);
+      display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;
+      transition:transform .18s;position:relative;border-radius:12px;padding:8px;
+    }
+    .neural-card:active{transform:scale(.96)}
+    .neural-card.selected .icon-wrapper{box-shadow:0 0 0 2px var(--primary), 0 0 20px var(--primary-glow);}
+    
+    .icon-wrapper{
+      width:68px;height:68px;
+      background:var(--card-bg);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:20px;
+      display:flex;align-items:center;justify-content:center;
+      overflow:hidden;
+      transition:all .3s ease;
+      position:relative;
+    }
+    .neural-card:hover .icon-wrapper{border-color:var(--card-accent); box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+
+    .app-label{font-size:0.68rem;font-weight:700;text-align:center;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.8;margin-top:2px}
+
+    /* FAB */
+    .fab-inject{
+      position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
+      background:var(--text);color:var(--bg-deep);
+      padding:14px 26px;border-radius:40px;
+      font-weight:800;font-size:0.9rem;
+      display:flex;align-items:center;gap:10px;
+      box-shadow:0 10px 40px rgba(255,255,255,0.15);
+      border:none;cursor:pointer;z-index:60;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .fab-inject:hover{transform:translateX(-50%) scale(1.05); box-shadow:0 14px 50px rgba(255,255,255,0.25);}
+    .fab-inject:active{transform:translateX(-50%) scale(0.98);}
+
+    /* MODAL */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.22s;z-index:120}
+    .modal.active{opacity:1;pointer-events:auto}
+    .modal-content{width:100%;max-width:540px;background:var(--surface);border-radius:24px 24px 0 0;padding:26px;transform:translateY(100%);transition:.3s cubic-bezier(.19,1,.22,1); border-top:1px solid var(--border)}
+    .modal.active .modal-content{transform:translateY(0)}
+    
+    .inject-option{background:var(--glass);border:1px solid var(--border);padding:16px;border-radius:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .2s}
+    .inject-option:hover{background:rgba(255,255,255,0.06)}
+    
+    /* VIEWER */
+    .viewer{position:fixed;inset:0;background:#000;z-index:200;display:flex;flex-direction:column;transform:scale(.95);opacity:0;pointer-events:none;transition:transform .3s,opacity .25s}
+    .viewer.active{transform:scale(1);opacity:1;pointer-events:auto}
+    .viewer-header{height:56px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-deep);border-bottom:1px solid var(--border)}
+    iframe{flex:1;border:none;background:#fff}
+
+    /* GLOBAL PLAYER */
+    .global-player {
+        position: fixed; bottom: 24px; right: 24px; z-index: 100;
+        background: rgba(15, 18, 25, 0.8); backdrop-filter: blur(12px);
+        border: 1px solid var(--border); border-radius: 50px;
+        padding: 6px 16px 6px 8px;
+        display: flex; align-items: center; gap: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transform: translateY(100px); opacity: 0;
+    }
+    .global-player.visible { transform: translateY(0); opacity: 1; }
+    .gp-btn { width: 36px; height: 36px; border-radius: 50%; border:none; background: var(--primary); color:#000; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+    .gp-info { font-size: 0.75rem; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* FUSION BAR */
+    .fusion-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:100px;z-index:70;display:flex;gap:8px; background:rgba(0,0,0,0.8); padding:8px; border-radius:16px; border:1px solid var(--border);}
+    .fusion-btn{padding:10px 16px;border-radius:10px;border:none;background:var(--fusion);color:#000;font-weight:800;cursor:pointer}
+    
+    .btn{padding:8px 16px;border-radius:8px;border:none;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.85rem}
+    .btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.1)}
+    .btn-ghost:hover{color:var(--text);border-color:var(--text)}
+
+    /* Helpers */
+    .muted{color:var(--muted);font-size:0.8rem}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</head>
+<body data-mode="explore">
+
+  <div class="nebula"></div>
+
+  <header class="header">
+    <div class="logo">
+      INFODOSE
+      <span>NEURAL DECK v.13</span>
+    </div>
+    <div class="status-bar">
+      <select id="modeSelect" class="status-select" title="Modo Operacional">
+        <option value="explore">EXPLORE</option>
+        <option value="focus">FOCUS</option>
+        <option value="ritual">RITUAL</option>
+      </select>
+      
+      <button class="status-select" id="btnExport" title="Backup Banco de Dados">EXP</button>
+      <button class="status-select" id="btnImport" title="Restaurar Banco de Dados">IMP</button>
+      <input id="importFile" type="file" accept="application/json" style="display:none">
+      
+      <div style="width:1px;height:16px;background:var(--border)"></div>
+      <button class="btn-ghost" id="editToggle" style="padding:4px 10px;font-size:0.7rem">SELECT</button>
+    </div>
+  </header>
+
+  <main class="deck-container" id="deck">
+    </main>
+
+  <button class="fab-inject" id="fabInject" title="Injetar (Clipboard/File)">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    INJETAR
+  </button>
+
+  <div class="fusion-bar" id="fusionBar" style="display:none">
+    <button class="fusion-btn" id="fuseBtn">Fundir</button>
+    <button class="btn btn-ghost" id="clearSelectionBtn">Limpar</button>
+  </div>
+
+  <div class="global-player" id="globalPlayer">
+    <button class="gp-btn" id="gpToggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+    <div class="gp-info" id="gpTitle">Aguardando áudio...</div>
+    <button class="btn-ghost" id="gpClose" style="border:none;padding:4px;width:24px;height:24px;">×</button>
+  </div>
+  <audio id="globalAudio" crossorigin="anonymous" style="display:none"></audio>
+  <audio id="ritualAudio" loop style="display:none"></audio> <div class="modal" id="modal">
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
+  <div class="viewer" id="viewer">
+    <div class="viewer-header">
+      <div id="viewTitle" style="font-weight:800;color:var(--primary)">MODULE</div>
+      <button class="btn btn-ghost" onclick="UI.closeViewer()">✕</button>
+    </div>
+    <iframe id="appFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-presentation"></iframe>
+  </div>
+
+<script>
+/* =====================================================
+   CORE ENGINE: IndexedDB & Logic
+=====================================================*/
+const DB_NAME = 'InfoDoseNeuralDB';
+const STORE = 'modules';
+
+const Engine = {
+  db: null,
+  async init(){
+    return new Promise((res)=>{
+      const req = indexedDB.open(DB_NAME, 3);
+      req.onupgradeneeded = (e)=>{
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains(STORE)){
+          db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+        }
+      };
+      req.onsuccess = (e)=>{ this.db = e.target.result; this.load(); res(); };
+    });
+  },
+
+  async save(app){
+    const tx = this.db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).add({...app, timestamp: Date.now()});
+    tx.oncomplete = ()=>{ UI.closeModal(); this.load(); };
+  },
+
+  putRaw(app){
+    return new Promise((resolve)=>{
+      const tx = this.db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).put(app).onsuccess = resolve;
+    });
+  },
+
+  async load(){
+    const tx = this.db.transaction(STORE,'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = ()=> UI.render(req.result || []);
+  },
+
+  delete(id){
+    if(!confirm('Desintegrar este módulo?')) return;
+    const tx = this.db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = ()=> { UI.clearSelection(); this.load(); };
+  },
+
+  async get(id){
+    return new Promise(r=>{
+      const tx = this.db.transaction(STORE,'readonly');
+      tx.objectStore(STORE).get(id).onsuccess = (e)=> r(e.target.result);
+    });
+  },
+
+  async launch(id){
+    const app = await this.get(id);
+    if(!app) return;
+    let url = app.content;
+    if(app.type === 'file'){
+      url = URL.createObjectURL(new Blob([app.content],{type:'text/html'}));
+    } else if(app.type === 'fusion' && app.compositeUrls && app.compositeUrls.length){
+      url = app.compositeUrls[0]; // Fusion Viewer logic simplificada
+    }
+    
+    UI.openViewer(app.title, url);
+    // Tenta capturar cor se não tiver
+    if(!app._palette && (app.thumb || app.iconSVG)){
+         UI.extractPalette(app.thumb || app.iconSVG).then(p => {
+             app._palette = p; this.putRaw(app);
+         });
+    }
+  },
+
+  async fuse(ids, presetKey = 'default'){
+     if(ids.length < 2) return;
+     const items = await Promise.all(ids.map(id => this.get(id)));
+     
+     // Logic Preset
+     let fused = {
+         title: items.map(i=>i.title).join(' + '),
+         type: 'fusion',
+         content: items.filter(i=>i.type==='file').map(i=>i.content).join('\n'),
+         compositeUrls: items.filter(i=>i.type==='url').map(i=>i.content),
+         domain: 'FUSION',
+         thumb: items[0].thumb,
+         iconSVG: UI.makeCompositeIconSVG(items),
+         preset: presetKey,
+         timestamp: Date.now()
+     };
+     
+     await new Promise(r=>{
+         const tx = this.db.transaction(STORE,'readwrite');
+         tx.objectStore(STORE).add(fused).onsuccess = r;
+     });
+     
+     // Delete originals
+     const txDel = this.db.transaction(STORE,'readwrite');
+     ids.forEach(id => txDel.objectStore(STORE).delete(id));
+     txDel.oncomplete = () => { UI.clearSelection(); this.load(); alert(`Fusão [${presetKey}] realizada.`); }
+  }
+};
+
+/* =====================================================
+   UI CONTROLLER
+=====================================================*/
+const UI = {
+  deck: document.getElementById('deck'),
+  modal: document.getElementById('modal'),
+  modalContent: document.getElementById('modalContent'),
+  viewer: document.getElementById('viewer'),
+  selected: new Set(),
+  
+  init(){
+    // Setup listeners
+    document.getElementById('fabInject').onclick = () => this.handleInject();
+    document.getElementById('modal').onclick = (e) => { if(e.target === this.modal) this.closeModal(); };
+    document.getElementById('editToggle').onclick = () => this.toggleEditing();
+    document.getElementById('clearSelectionBtn').onclick = () => this.clearSelection();
+    
+    // Fusion
+    document.getElementById('fuseBtn').onclick = () => {
+        const p = prompt("Preset de Fusão: 'radio', 'ritual', 'map', 'default'", "default");
+        if(p) Engine.fuse(Array.from(this.selected), p);
+    };
+
+    // Modes & Data
+    this.setupModes();
+    this.setupDataControls();
+    this.setupPlayer();
+  },
+
+  render(apps){
+    this.deck.innerHTML = '';
+    if(apps.length === 0) {
+        this.deck.innerHTML = `<div style="text-align:center;padding:100px 0;opacity:.3"><h3>CAMPO VAZIO</h3><p>Injete dados para começar.</p></div>`;
+        return;
+    }
+    
+    // Grouping logic
+    const groups = {};
+    apps.forEach(app => {
+        let k = 'GERAL';
+        if(app.type === 'url') k = app.domain || 'WEB';
+        if(app.type === 'file') k = 'IMPORTADOS';
+        if(app.type === 'fusion') k = 'FUSÕES';
+        if(!groups[k]) groups[k] = [];
+        groups[k].push(app);
+    });
+
+    Object.keys(groups).sort().forEach(g => {
+        const sec = document.createElement('section'); sec.className = 'group-section';
+        sec.innerHTML = `<div class="group-header"><div class="group-title">${escapeHtml(g)}</div></div><div class="app-grid"></div>`;
+        const grid = sec.querySelector('.app-grid');
+        
+        groups[g].forEach(app => {
+            const card = document.createElement('div');
+            card.className = 'neural-card';
+            card.dataset.id = app.id;
+            
+            // Icon logic
+            let iconContent = app.thumb ? `<img src="${escapeAttr(app.thumb)}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">` : 
+                             (app.iconSVG ? `<img src="${escapeAttr(app.iconSVG)}" style="width:100%">` : `<span style="font-size:1.5rem;font-weight:800">${(app.title||'ID').substring(0,2).toUpperCase()}</span>`);
+            
+            card.innerHTML = `<div class="icon-wrapper">${iconContent}</div><div class="app-label">${escapeHtml(app.title)}</div>`;
+            
+            // Apply Palette if exists
+            if(app._palette) this.applyPalette(card, app._palette);
+            else if(app.thumb) this.extractPalette(app.thumb).then(p=>{ app._palette=p; Engine.putRaw(app); this.applyPalette(card,p); });
+
+            // Events
+            card.onclick = (e) => {
+                if(document.body.classList.contains('editing')){
+                    e.stopPropagation(); this.toggleSelect(app.id, card);
+                } else {
+                    Engine.launch(app.id);
+                }
+            };
+            
+            // Long press delete
+            let timer;
+            const start = () => timer = setTimeout(() => Engine.delete(app.id), 800);
+            const end = () => clearTimeout(timer);
+            card.onmousedown = card.ontouchstart = start;
+            card.onmouseup = card.ontouchend = card.onmouseleave = end;
+
+            grid.appendChild(card);
+        });
+        this.deck.appendChild(sec);
+    });
+    this.syncSelection();
+  },
+
+  /* --- MODAL & INJECT FLOW --- */
+  async handleInject(){
+    let clipText = '';
+    try { clipText = await navigator.clipboard.readText(); } catch(e){}
+    
+    if(clipText && isUrl(clipText)){
+        const pre = await buildPreviewFromUrl(clipText);
+        this.openModal(renderPreview(pre));
+        // Handlers
+        document.getElementById('btnInjConfirm').onclick = () => {
+             Engine.save({
+                 title: pre.title, type:'url', content: pre.url, domain: pre.domain,
+                 thumb: pre.og || pre.thumb || pre.iconData, iconSVG: pre.iconData
+             });
+        };
+        document.getElementById('btnInjEdit').onclick = () => this.openModal(renderCreate(pre));
+        document.getElementById('btnBookmarklet').onclick = () => alertBookmarklet();
+    } else {
+        this.openModal(renderOptions());
+        document.getElementById('optFile').onclick = () => document.getElementById('hiddenFile').click();
+        document.getElementById('hiddenFile').onchange = async (e) => {
+            const f = e.target.files[0];
+            if(!f) return;
+            const txt = await f.text();
+            const name = f.name.replace('.html','');
+            Engine.save({title:name, type:'file', content:txt, thumb:null});
+        };
+        document.getElementById('optUrl').onclick = () => this.openModal(renderCreate());
+    }
+  },
+
+  openModal(html){ this.modalContent.innerHTML=html; this.modal.classList.add('active'); this.addModalListeners(); },
+  closeModal(){ this.modal.classList.remove('active'); },
+  addModalListeners(){
+     const btnCancel = document.getElementById('btnCancel');
+     if(btnCancel) btnCancel.onclick = () => this.closeModal();
+     
+     const btnSave = document.getElementById('btnSave');
+     if(btnSave) btnSave.onclick = async () => {
+         const tit = document.getElementById('inpTitle').value;
+         const url = document.getElementById('inpUrl').value;
+         if(url){
+             const pre = await buildPreviewFromUrl(url);
+             Engine.save({
+                 title: tit || pre.title, type:'url', content:url, domain: pre.domain,
+                 thumb: pre.og || pre.thumb, iconSVG: pre.iconData
+             });
+         }
+     }
+  },
+
+  /* --- VIEWER & PLAYER INTEGRATION --- */
+  openViewer(title, url){
+    document.getElementById('viewTitle').innerText = title.toUpperCase();
+    const frame = document.getElementById('appFrame');
+    frame.src = url;
+    this.viewer.classList.add('active');
+    
+    // Attempt audio capture after load
+    setTimeout(() => {
+        if(!Player.tryCapture(frame)) {
+            Player.showFallback(title, url);
+        }
+    }, 1000);
+  },
+  
+  closeViewer(){
+    this.viewer.classList.remove('active');
+    document.getElementById('appFrame').src = 'about:blank';
+    Player.reset();
+  },
+
+  /* --- SELECTION --- */
+  toggleEditing(){
+    document.body.classList.toggle('editing');
+    const on = document.body.classList.contains('editing');
+    document.getElementById('editToggle').innerText = on ? 'DONE' : 'SELECT';
+    if(!on) this.clearSelection();
+    this.syncSelection();
+  },
+  toggleSelect(id, card){
+    if(this.selected.has(id)) this.selected.delete(id); else this.selected.add(id);
+    this.syncSelection();
+  },
+  clearSelection(){ this.selected.clear(); this.syncSelection(); this.toggleEditing(); document.body.classList.remove('editing'); },
+  syncSelection(){
+      document.querySelectorAll('.neural-card').forEach(c => {
+          if(this.selected.has(Number(c.dataset.id))) c.classList.add('selected');
+          else c.classList.remove('selected');
+      });
+      document.getElementById('fusionBar').style.display = (this.selected.size > 0 && document.body.classList.contains('editing')) ? 'flex' : 'none';
+  },
+
+  /* --- THEME & VISUALS --- */
+  async extractPalette(src){
+    return new Promise(resolve => {
+        const img = new Image(); img.crossOrigin = "Anonymous";
+        img.src = src;
+        img.onload = () => {
+            const cvs = document.createElement('canvas'); cvs.width=1; cvs.height=1;
+            const ctx = cvs.getContext('2d'); ctx.drawImage(img,0,0,1,1);
+            const [r,g,b] = ctx.getImageData(0,0,1,1).data;
+            resolve({
+                accent: `rgb(${r},${g},${b})`,
+                bg: `rgba(${r},${g},${b},0.15)`
+            });
+        };
+        img.onerror = () => resolve(null);
+    });
+  },
+  applyPalette(card, pal){
+      card.style.setProperty('--card-accent', pal.accent);
+      card.style.setProperty('--card-bg', pal.bg);
+  },
+  makeCompositeIconSVG(items){
+      return UI.svgDataUrlForText("FUSE", "#ffd166", "#000"); // Simplified
+  },
+  svgDataUrlForText(text, bg, fg){
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100%' height='100%' fill='${bg}'/><text x='50%' y='55%' text-anchor='middle' font-family='sans-serif' font-size='40' fill='${fg}' font-weight='bold'>${text}</text></svg>`;
+      return 'data:image/svg+xml;base64,' + btoa(svg);
+  },
+
+  /* --- SETUP HELPERS --- */
+  setupModes(){
+    const sel = document.getElementById('modeSelect');
+    const saved = localStorage.getItem('infodose_mode') || 'explore';
+    document.body.dataset.mode = saved;
+    sel.value = saved;
+    
+    sel.onchange = (e) => {
+        const m = e.target.value;
+        document.body.dataset.mode = m;
+        localStorage.setItem('infodose_mode', m);
+        // Ritual Audio
+        const aud = document.getElementById('ritualAudio');
+        if(m === 'ritual') {
+            // Placeholder: user would need to set a src or we use a generated drone
+            // aud.src = 'path/to/drone.mp3'; aud.play().catch(()=>{});
+        } else {
+            aud.pause();
+        }
+    };
+  },
+
+  setupDataControls(){
+    document.getElementById('btnExport').onclick = async () => {
+        const tx = Engine.db.transaction(STORE,'readonly');
+        tx.objectStore(STORE).getAll().onsuccess = (e) => {
+            const data = JSON.stringify({source:'InfoDose', version:13, modules:e.target.result});
+            const blob = new Blob([data], {type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href=url; a.download=`infodose_backup_${Date.now()}.json`;
+            a.click();
+        };
+    };
+    document.getElementById('btnImport').onclick = () => document.getElementById('importFile').click();
+    document.getElementById('importFile').onchange = (e) => {
+        const f = e.target.files[0];
+        if(f) {
+            const r = new FileReader();
+            r.onload = (ev) => {
+                const json = JSON.parse(ev.target.result);
+                const tx = Engine.db.transaction(STORE,'readwrite');
+                json.modules.forEach(m => { delete m.id; tx.objectStore(STORE).add(m); }); // Prevent ID collision
+                tx.oncomplete = () => { Engine.load(); alert('Restauração completa.'); };
+            };
+            r.readAsText(f);
+        }
+    };
+  },
+
+  setupPlayer(){
+     // Global Player Toggles
+     const gp = document.getElementById('globalPlayer');
+     const aud = document.getElementById('globalAudio');
+     const btn = document.getElementById('gpToggle');
+     const close = document.getElementById('gpClose');
+     
+     btn.onclick = () => { if(aud.paused) { aud.play(); btn.innerHTML='⏸'; } else { aud.pause(); btn.innerHTML='▶'; } };
+     close.onclick = () => { aud.pause(); gp.classList.remove('visible'); };
+  }
+};
+
+/* =====================================================
+   PLAYER LOGIC (Cross-Origin Fallback)
+=====================================================*/
+const Player = {
+    widget: document.getElementById('globalPlayer'),
+    audio: document.getElementById('globalAudio'),
+    title: document.getElementById('gpTitle'),
+    
+    show(src, name){
+        this.audio.src = src;
+        this.title.innerText = name;
+        this.widget.classList.add('visible');
+        this.audio.play().then(()=>document.getElementById('gpToggle').innerHTML='⏸').catch(e=>console.log(e));
+    },
+    
+    showFallback(name, url){
+        this.title.innerText = "Cross-Origin: Abrir Aba";
+        this.widget.classList.add('visible');
+        document.getElementById('gpToggle').innerHTML = '↗';
+        document.getElementById('gpToggle').onclick = () => window.open(url, '_blank');
+    },
+
+    tryCapture(iframe){
+        try {
+            // Attempt to access same-origin
+            const doc = iframe.contentDocument; 
+            if(!doc) return false;
+            const audTags = doc.querySelectorAll('audio, video');
+            if(audTags.length > 0 && audTags[0].currentSrc){
+                this.show(audTags[0].currentSrc, "Audio Local Detectado");
+                return true;
+            }
+        } catch(e){ return false; } // Security Error = Cross Origin
+        return false;
+    },
+    
+    reset(){
+        this.audio.pause();
+        this.widget.classList.remove('visible');
+    }
+};
+
+/* =====================================================
+   HELPERS & HTML GENERATORS
+=====================================================*/
+function isUrl(s){ try{ new URL(s); return true; }catch(e){return false;} }
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+
+async function buildPreviewFromUrl(url){
+    // Mock preview since we can't do real CORS fetch on client easily without proxy
+    // In a real PWA, you might use a service worker proxy or a backend.
+    const domain = new URL(url).hostname.replace('www.','');
+    return {
+        url: url,
+        title: domain.toUpperCase(),
+        domain: domain,
+        og: null,
+        thumb: `https://www.google.com/s2/favicons?sz=128&domain=${domain}`,
+        iconData: UI.svgDataUrlForText(domain.substring(0,2).toUpperCase(), "#333", "#fff")
+    };
+}
+
+function renderOptions(){
+    return `
+    <h3 style="margin-top:0;color:var(--primary)">O que deseja injetar?</h3>
+    <div class="inject-option" id="optFile">
+      <div style="font-weight:800">📄 Arquivo Local (.html)</div>
+    </div>
+    <div class="inject-option" id="optUrl">
+      <div style="font-weight:800">🌐 Link Neural (URL)</div>
+    </div>
+    <input id="hiddenFile" type="file" accept=".html" style="display:none">
+    <div style="margin-top:10px;text-align:right"><button class="btn btn-ghost" id="btnCancel">Cancelar</button></div>
+    `;
+}
+
+function renderPreview(p){
+    return `
+    <h3 style="margin-top:0;color:var(--primary)">Link Detectado</h3>
+    <div style="display:flex;gap:12px;margin-bottom:12px">
+       <img src="${p.thumb}" style="width:50px;height:50px;border-radius:8px">
+       <div><div style="font-weight:800">${p.title}</div><div class="muted">${p.domain}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+       <button class="btn btn-ghost" id="btnBookmarklet" title="Gerar Bookmarklet">⚡</button>
+       <button class="btn btn-ghost" id="btnInjEdit">Editar</button>
+       <button class="btn" style="background:var(--primary);color:#000" id="btnInjConfirm">Injetar</button>
+    </div>
+    `;
+}
+
+function renderCreate(p = {}){
+    return `
+    <h3 style="margin-top:0">Novo Módulo</h3>
+    <input id="inpTitle" class="status-select" style="width:100%;margin-bottom:8px;padding:10px" placeholder="Nome" value="${p.title||''}">
+    <input id="inpUrl" class="status-select" style="width:100%;margin-bottom:12px;padding:10px" placeholder="https://..." value="${p.url||''}">
+    <div style="text-align:right">
+       <button class="btn btn-ghost" id="btnCancel">Cancelar</button>
+       <button class="btn" style="background:var(--primary);color:#000" id="btnSave">Salvar</button>
+    </div>
+    `;
+}
+
+function alertBookmarklet(){
+    const code = `javascript:(function(){var u=location.href,t=document.title;window.open('YOUR_APP_URL_HERE','_blank').postMessage({type:'infodose-install',url:u,title:t},'*');})();`;
+    prompt("Copie este código e crie um favorito na barra do navegador. Ao clicar nele em qualquer site, ele enviará o link para este Deck.", code);
+}
+
+/* =====================================================
+   BOOTSTRAP
+=====================================================*/
+window.addEventListener('load', async () => {
+   await Engine.init();
+   UI.init();
+   
+   // Installer Listener (Bookmarklet support)
+   window.addEventListener('message', (e) => {
+       if(e.data && e.data.type === 'infodose-install'){
+           Engine.save({
+               title: e.data.title, type:'url', content: e.data.url, 
+               domain: new URL(e.data.url).hostname, timestamp: Date.now()
+           });
+           alert('Link injetado via sinal remoto!');
+       }
+   });
+
+   // SW Registration
+   if('serviceWorker' in navigator && location.protocol === 'https:'){
+       // Try register sw.js if exists
+       navigator.serviceWorker.register('sw.js').catch(()=>{});
+   }
+});
+
+</script>
+</body>
+</html>
